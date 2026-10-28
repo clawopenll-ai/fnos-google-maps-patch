@@ -1,5 +1,7 @@
 # fnOS 相簿 — 底圖改為 Google Maps
 
+> 📖 **Language / 語言**： [简体中文](README.md) | [English](README.en.md)
+
 把 **飛牛 fnOS 相簿**（`trim.photos`）的底圖從「騰訊地圖」換成「Google Maps」，
 保留原本所有地圖功能：主地圖、編輯照片位置、預覽側欄小地圖、照片聚合。
 
@@ -181,6 +183,7 @@ powershell -ExecutionPolicy Bypass -File test\serve.ps1 -Port 8765
 
 ```
 ├── README.md
+├── README.en.md              英文說明（English documentation）
 ├── LICENSE
 ├── NOTICE
 ├── assets/                 ★ 要部署到 NAS 的檔案
