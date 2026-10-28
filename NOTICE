@@ -1,0 +1,59 @@
+NOTICE / 第三方聲明
+====================
+
+本專案包含以下第三方元件：
+
+------------------------------------------------------------------
+Leaflet 1.9.4
+------------------------------------------------------------------
+Copyright (c) 2010-2023, Vladimir Agafonkin
+Copyright (c) 2010-2011, CloudMade
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+  * Redistributions of source code must retain the above copyright notice,
+    this list of conditions and the following disclaimer.
+  * Redistributions in binary form must reproduce the above copyright notice,
+    this list of conditions and the following disclaimer in the documentation
+    and/or other materials provided with the distribution.
+  * Neither the name of CloudMade nor the names of its contributors may be
+    used to endorse or promote products derived from this software without
+    specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+------------------------------------------------------------------
+關於 fnOS / 飛牛相簿
+------------------------------------------------------------------
+本專案是針對第三方商業產品「飛牛 fnOS 相冊（trim.photos）」的**非官方**補丁，
+與飛牛（fnNas / 銳捷）、騰訊、Google 均無任何隸屬、授權或背書關係。
+
+本專案**不含**飛牛的任何資源檔案（JS / CSS / 圖片）與前端原始碼。
+相容層中為維持行為一致而重新實作了少量輔助邏輯（GPS 字串的格式、解析與驗證、
+依時間排序、時間軸狀態存取），這些屬通用工具性程式碼，並非飛牛的專有實作。
+
+使用者需自行從官方管道取得 fnOS 與相冊 app；本補丁僅提供「修改既有檔案」的
+操作步驟與相容層實作。
+
+「fnOS」、「飛牛」、「trim.photos」等名稱與商標屬於其各自權利人所有。
+
+------------------------------------------------------------------
+地圖資料來源
+------------------------------------------------------------------
+Google 地圖圖磚端點並非 Google 公開的正式 API，屬非官方使用。
+使用前請自行確認所在地法規與服務條款是否符合，並考慮改用
+Google Maps JavaScript API（需申請 API Key）或 OpenStreetMap 等正式來源。
+
+附帶的 attribution 設定已包含 Google 版權標示；移除該標示可能違反服務條款。

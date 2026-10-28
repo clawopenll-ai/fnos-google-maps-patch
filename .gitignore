@@ -1,0 +1,21 @@
+# 作業環境
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 本機設定（請勿提交）
+.env
+.env.*
+*.local
+settings.local.json
+
+# 打包產物
+*.zip
+release/
+dist/
+
+# 暫存 / 備份
+*.orig-bak
+*.bak
+*~

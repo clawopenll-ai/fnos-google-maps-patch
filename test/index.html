@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>fnOS 相册 Google Maps 补丁 · 兼容性测试</title>
+<link rel="stylesheet" href="./leaflet.css" />
+<style>
+  body { font-family: system-ui, "Microsoft YaHei", sans-serif; margin: 0; background: #f5f6f8; }
+  *,:before,:after { box-sizing: border-box; }
+  h2 { font-size: 15px; margin: 16px 16px 6px; }
+  .box { margin: 0 16px 14px; background: #fff; border-radius: 8px; padding: 10px 12px; }
+  #map-container { height: 420px; border-radius: 8px; overflow: hidden; position: relative; }
+  #map-edit { height: 260px; border-radius: 8px; overflow: hidden; position: relative; }
+  #map-photo { height: 200px; border-radius: 8px; overflow: hidden; position: relative; }
+  .log { font: 12px/1.7 ui-monospace, Consolas, monospace; white-space: pre-wrap; }
+  .pass { color: #0a7d3c; } .fail { color: #d02020; } .info { color: #555; }
+  #map-container .photo-cluster, #map-photo .photo-cluster, #map-edit .photo-cluster {
+    width: 64px; height: 64px; background-color: #fff; border-radius: 4px; padding: 2px;
+    position: absolute; left: 0; top: 0; user-select: none; cursor: pointer;
+  }
+  #map-container .photo, #map-photo .photo, #map-edit .photo {
+    width: 100%; height: 100%; object-fit: cover; border-radius: 4px; background: #bbb;
+  }
+  #map-container .photo-count, #map-photo .photo-count, #map-edit .photo-count {
+    position: absolute; top: -10px; right: -10px; padding: 0 4px; color: #fff; font-size: 16px;
+    font-weight: 600; line-height: 26px; min-width: 26px; height: 26px; background: #0055ff;
+    border-radius: 57px; display: flex; justify-content: center;
+  }
+  #map-container .disabled-click { cursor: default !important; }
+</style>
+</head>
+<body>
+<h2>1) 主地图（对应相册 <code>BeU4z-iCjMledp4v.js</code>：map-container + MarkerCluster）</h2>
+<div class="box"><div id="map-container"></div></div>
+
+<h2>2) 编辑位置弹窗（对应 <code>GAwskEmyudbr5omg.js</code>：map-edit + 点击选点）</h2>
+<div class="box"><div id="map-edit"></div></div>
+
+<h2>3) 预览侧栏小地图（对应 <code>CrQROTGm4-PDc7oi.js</code>：map-photo）</h2>
+<div class="box"><div id="map-photo"></div></div>
+
+<h2>测试结果</h2>
+<div class="box log" id="result">running...</div>
+
+<script type="module">
+const out = document.getElementById('result');
+let pass = 0, fail = 0;
+const lines = [];
+function log(cls, msg) {
+  lines.push(cls === 'pass' ? '  [PASS] ' + msg : cls === 'fail' ? '  [FAIL] ' + msg : '  [info] ' + msg);
+  if (cls === 'pass') pass++; else if (cls === 'fail') fail++;
+  out.innerHTML = lines.map(l => {
+    const c = l.includes('[PASS]') ? 'pass' : l.includes('[FAIL]') ? 'fail' : 'info';
+    return '<span class="' + c + '">' + l + '</span>';
+  }).join('\n');
+}
+function check(name, cond, extra) {
+  log(cond ? 'pass' : 'fail', name + (extra ? '  -> ' + extra : ''));
+}
+
+try {
+  /* ---- 与相册完全相同的调用方式 ---- */
+  const mod = await import('./l1Zo7QHRsLu3cCA9.js');
+  check('模块导出名齐全 (a,c,d,i,l,n,o,r,s,t,u)',
+    ['a','c','d','i','l','n','o','r','s','t','u'].every(k => typeof mod[k] === 'function'),
+    Object.keys(mod).join(','));
+
+  await mod.o();                       // 加载器：原腾讯 TMap -> 现在 Leaflet+Google
+  mod.n();                             // 安装 PhotoDomOverlay
+  check('window.TMap 已就绪', !!window.TMap && !!window.TMap.Map);
+  check('window.PhotoDomOverlay 已就绪', typeof window.PhotoDomOverlay === 'function');
+
+  const TMap = window.TMap;
+
+  /* ===== 1) 主地图 ===== */
+  const q = 4.5;
+  const map = new window.TMap.Map('map-container', {
+    minZoom: q,
+    boundary: new TMap.LatLngBounds(new TMap.LatLng(-85, -180), new TMap.LatLng(85, 180)),
+    mapStyleId: 'style1'
+  });
+  check('Map 创建成功', !!map && !!map._leaflet);
+
+  const cluster = new TMap.MarkerCluster({
+    id: 'cluster', map: map, enableDefaultStyle: false, minimumClusterSize: 2,
+    geometries: [], zoomOnClick: false, gridSize: 100, averageCenter: false
+  });
+  check('MarkerCluster 创建成功', !!cluster);
+
+  /* 模拟后端 /api/v1/map/previewAllPoint 的返回 */
+  const raw = [
+    { lat: 22.53550, lon: 114.05600, count: 12, dateTime: '2025-12-26T10:00:00' },
+    { lat: 22.53610, lon: 114.05720, count: 3,  dateTime: '2025-12-26T10:05:00' },
+    { lat: 22.54000, lon: 114.06000, count: 1,  dateTime: '2025-12-26T10:09:00' },
+    { lat: 31.23000, lon: 121.47000, count: 7, dateTime: '2025-12-27T10:00:00' },
+    { lat: 39.92403, lon: 116.26994, count: 4, dateTime: '2025-12-28T10:00:00' }
+  ];
+  const geometries = raw.map(t => {
+    const id = `${t.lat},${t.lon}`;
+    return {
+      id: id,
+      position: new TMap.LatLng(Number(t.lat), Number(t.lon)),
+      properties: { id: id, url: makeThumb(t.dateTime), count: t.count, dateTime: t.dateTime }
+    };
+  });
+  cluster.add(geometries);
+
+  /* 复刻相册的渲染逻辑 */
+  const overlays = [];
+  function render() {
+    overlays.forEach(o => o.destroy());
+    overlays.length = 0;
+    const clusters = cluster.getClusters();
+    clusters.forEach(t => {
+      const sorted = [...t.geometries].sort((a, b) =>
+        a.properties.dateTime < b.properties.dateTime ? -1 : 1);
+      const url = sorted[0].properties.url;
+      const count = sorted.reduce((sum, g) => sum + (g.properties.count || 0), 0);
+      const ov = new window.PhotoDomOverlay({
+        map: map, position: t.center, content: { url: url, count: count, id: t.id }
+      });
+      ov.on('click', () => log('info', '点击了聚合点 id=' + t.id + ' count=' + count));
+      overlays.push(ov);
+    });
+    return clusters;
+  }
+  const clusters = cluster.getClusters();
+  check('getClusters() 返回带 geometries 的聚合', Array.isArray(clusters) && clusters.length > 0,
+    'clusters=' + clusters.length);
+  check('聚合项结构正确 (id/center/geometries)',
+    clusters.every(c => c.id && c.center && typeof c.center.getLat === 'function' && Array.isArray(c.geometries)));
+  check('单张照片未被误聚合', clusters.some(c => c.geometries.length === 1),
+    'singles=' + clusters.filter(c => c.geometries.length === 1).length);
+  check('多张照片被聚合', clusters.some(c => c.geometries.length > 1),
+    'groups=' + clusters.filter(c => c.geometries.length > 1).length);
+  render();
+  check('PhotoDomOverlay 已渲染', overlays.length === clusters.length, 'overlays=' + overlays.length);
+  check('标记 DOM 含 .photo-cluster',
+    document.querySelectorAll('#map-container .photo-cluster').length === overlays.length);
+
+  /* map API 覆盖检查 */
+  const b = map.getBounds();
+  check('getBounds().getNorthEast()', !!b && typeof b.getNorthEast === 'function' && typeof b.getNorthEast().getLat() === 'number',
+    'ne=' + (b ? b.getNorthEast().getLat() + ',' + b.getNorthEast().getLng() : 'n/a'));
+  check('getCenter()', typeof map.getCenter().getLat() === 'number',
+    'center=' + map.getCenter().getLat() + ',' + map.getCenter().getLng());
+  check('getZoom()', typeof map.getZoom() === 'number', 'zoom=' + map.getZoom());
+  map.setZoom(8); check('setZoom()', map.getZoom() === 8,
+    'zoom=' + map.getZoom() + ' leafZoom=' + map._map.getZoom() + ' loaded=' + map._map._loaded +
+    ' animating=' + map._map._animatingZoom + ' min=' + map._map.options.minZoom + ' max=' + map._map.options.maxZoom);
+  map.setCenter(new TMap.LatLng(22.5355, 114.056)); check('setCenter()', map.getCenter().getLat() === 22.5355);
+  map.zoomTo(10); check('zoomTo()', map.getZoom() === 10, 'zoom=' + map.getZoom());
+  map.easeTo({ center: new TMap.LatLng(39.92403, 116.26994), zoom: 6 }, { duration: 0 });
+  check('easeTo(duration:0) 立即跳转', Math.abs(map.getCenter().getLat() - 39.92403) < 1e-6,
+    'lat=' + map.getCenter().getLat());
+  let rafOk = false;
+  await new Promise(r => { requestAnimationFrame(() => { rafOk = true; r(); }); setTimeout(r, 800); });
+  if (rafOk) {
+    map.easeTo({ center: new TMap.LatLng(22.5355, 114.056), zoom: 6 }, { duration: 300 });
+    await new Promise(r => setTimeout(r, 900));
+    check('easeTo(duration:300) 终点正确', Math.abs(map.getCenter().getLat() - 22.5355) < 1e-6,
+      'lat=' + map.getCenter().getLat());
+  } else {
+    log('info', '跳过 easeTo 动画断言：当前分页 requestAnimationFrame 被节流（真实可见分页正常）');
+  }
+  const pc = map.projectToContainer(new TMap.LatLng(39.92403, 116.26994));
+  check('projectToContainer()', typeof pc.getX === 'function' && typeof pc.getY === 'function');
+  check('getControl() 返回 null（相册改用自绘控件）', map.getControl(TMap.constants.DEFAULT_CONTROL_ID.ZOOM) === null);
+  check('TMap.constants 完整',
+    !!TMap.constants.DEFAULT_CONTROL_ID.ZOOM && !!TMap.constants.CONTROL_POSITION.BOTTOM_RIGHT);
+
+  /* 深色样式 */
+  map.setMapStyleId('style2');
+  check('setMapStyleId(style2) 生效',
+    document.getElementById('map-container').classList.contains('gmaps-dark-style'));
+  map.setMapStyleId('style1');
+  check('setMapStyleId(style1) 还原',
+    !document.getElementById('map-container').classList.contains('gmaps-dark-style'));
+
+  /* ===== 2) 编辑位置弹窗 ===== */
+  const mapEdit = new TMap.Map('map-edit', {
+    mapStyleId: 'style1', viewMode: '2D',
+    center: new TMap.LatLng(39.924036, 116.269945), zoom: 3
+  });
+  let clicked = null;
+  mapEdit.on('click', e => { clicked = e.latLng; });
+  check('编辑地图创建成功', !!mapEdit);
+  const ovEdit = new window.PhotoDomOverlay({
+    map: mapEdit, position: new TMap.LatLng(22.5355, 114.056),
+    content: { url: makeThumb('2025-12-26T11:00:00'), count: 1, disabledClick: true }
+  });
+  check('编辑地图标记渲染', !!document.querySelector('#map-edit .photo-cluster'));
+  check('disabled-click 样式存在', !!document.querySelector('#map-edit .photo-cluster.disabled-click'));
+
+  /* ===== 3) 预览小地图 ===== */
+  const mapPhoto = new TMap.Map('map-photo', {
+    zoom: 16, mapStyleId: 'style1', center: new TMap.LatLng(22.5355, 114.056),
+    viewMode: '2D', draggable: false, scrollable: false, touchZoomable: false,
+    pitchable: false, rotatable: false, doubleClickZoom: false
+  });
+  check('小地图创建成功', !!mapPhoto);
+  check('小地图禁用拖拽', mapPhoto._leaflet.dragging && !mapPhoto._leaflet.dragging.enabled());
+  const ovPhoto = new window.PhotoDomOverlay({
+    map: mapPhoto, position: new TMap.LatLng(22.5355, 114.056),
+    content: { url: makeThumb('2025-12-26T12:00:00'), count: 1, disabledClick: true }
+  });
+  check('小地图标记渲染', !!document.querySelector('#map-photo .photo-cluster'));
+
+  /* ===== 辅助函数行为（相册原样调用） ===== */
+  const t = k => k;
+  check('GPS 校验 u() 通过', mod.u('114.056,22.5355', t).isOK === true);
+  check('GPS 校验 u() 拒绝非法值', mod.u('999,999', t).isOK === false);
+  check('GPS 归一化 t() 交换 lat/lng', mod.t('22.5355,114.056', t) === '114.056,22.5355');
+  check('GPS 格式化 r()', mod.r({ lat: 22.5, lng: 114.0 }) === '114,22.5');
+  check('GPS 解析 s()', JSON.stringify(mod.s('114.056,22.5355')) === '[114.056,22.5355]');
+  check('越界坐标检测 a()', mod.a(91, 91, -91) === true && mod.a(10, 20, 30) === false);
+
+  /* 瓦片是否真的加载 */
+  await new Promise(r => setTimeout(r, 2500));
+  const tiles = document.querySelectorAll('#map-container .leaflet-tile-loaded').length;
+  check('Google 瓦片已加载', tiles > 0, 'tiles=' + tiles);
+
+  log(fail === 0 ? 'pass' : 'fail', '\n=== 汇总: ' + pass + ' 通过, ' + fail + ' 失败 ===');
+} catch (e) {
+  log('fail', '异常: ' + (e && e.stack ? e.stack : e));
+  out.textContent += '\n' + (e && e.stack ? e.stack : e);
+}
+
+/* 生成一张占位缩略图 */
+function makeThumb(seed) {
+  const hue = (String(seed).split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % 360;
+  const svg = "<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='64' height='64' fill='hsl(" + hue + ",60%,55%)'/><text x='32' y='38' font-size='14' text-anchor='middle' fill='#fff'>" + (seed.slice(11, 16)) + "</text></svg>";
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+</script>
+</body>
+</html>
